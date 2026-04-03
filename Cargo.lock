@@ -92,7 +92,11 @@ dependencies = [
  "anyhow",
  "axum",
  "benchmark",
+ "config_gen",
+ "dirs",
  "hw_probe",
+ "mem_mgr",
+ "profile_db",
  "serde",
  "serde_json",
  "tokio",
@@ -271,6 +275,8 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "api_server",
+ "axum",
  "benchmark",
  "clap",
  "config_gen",
@@ -279,6 +285,7 @@ dependencies = [
  "mem_mgr",
  "profile_db",
  "serde_json",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]

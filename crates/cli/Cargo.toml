@@ -11,11 +11,14 @@ path = "main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+tokio.workspace = true
+axum.workspace = true
 hw_probe = { path = "../hw_probe" }
 mem_mgr = { path = "../mem_mgr" }
 config_gen = { path = "../config_gen" }
 profile_db = { path = "../profile_db" }
 benchmark = { path = "../benchmark" }
+api_server = { path = "../api_server" }
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

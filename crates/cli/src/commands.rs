@@ -2,7 +2,7 @@ use anyhow::Result;
 use benchmark::{BenchmarkConfig, BenchmarkRunner};
 use config_gen::LlamaCppConfig;
 use hw_probe::probe_all;
-use mem_mgr::{compute_partition, UMAPartition};
+use mem_mgr::{compute_partition, detect_architecture, PartitionConfig, UMAPartition};
 use profile_db::ProfileDatabase;
 use std::path::PathBuf;
 
@@ -22,11 +22,10 @@ pub fn configure(engine: String, model: Option<String>, output: Option<String>) 
         .and_then(|igpu| igpu.memory_mb)
         .unwrap_or(0);
 
-    let partition: UMAPartition = compute_partition(total_mb, device_mb);
-
-    let model_size_mb = if let Some(model_path) = &model {
+    let (model_size_mb, model_arch, num_layers, hidden_size) = if let Some(model_path) = &model {
         if let Ok(metadata) = config_gen::read_gguf_metadata(model_path) {
-            metadata
+            let arch = detect_architecture(model_path);
+            let size = metadata
                 .model
                 .get("embedding_length")
                 .map(|v| {
@@ -36,13 +35,61 @@ pub fn configure(engine: String, model: Option<String>, output: Option<String>) 
                         4000
                     }
                 })
-                .unwrap_or(4000)
+                .unwrap_or(4000);
+            let layers = metadata
+                .model
+                .get("layer_count")
+                .map(|v| {
+                    if let config_gen::GGUFValue::Int(n) = v {
+                        *n as u32
+                    } else {
+                        32
+                    }
+                })
+                .unwrap_or(32);
+            let hidden = metadata
+                .model
+                .get("hidden_size")
+                .map(|v| {
+                    if let config_gen::GGUFValue::Int(n) = v {
+                        *n as u32
+                    } else {
+                        4096
+                    }
+                })
+                .unwrap_or(4096);
+            (size, arch, layers, hidden)
         } else {
-            4000
+            (4000, mem_mgr::ModelArchitecture::Standard, 32, 4096)
         }
     } else {
-        4000
+        (4000, mem_mgr::ModelArchitecture::Standard, 32, 4096)
     };
+
+    let partition_config = PartitionConfig {
+        model_size_mb,
+        model_architecture: model_arch,
+        ctx_size: match model_size_mb {
+            m if m < 2000 => 2048,
+            m if m < 6000 => 4096,
+            _ => 8192,
+        },
+        batch_size: 512,
+        num_layers,
+        hidden_size,
+        num_experts: if model_arch == mem_mgr::ModelArchitecture::MoE {
+            Some(8)
+        } else {
+            None
+        },
+        num_active_experts: if model_arch == mem_mgr::ModelArchitecture::MoE {
+            Some(2)
+        } else {
+            None
+        },
+    };
+
+    let partition: UMAPartition = compute_partition(total_mb, device_mb, Some(partition_config));
 
     let has_vulkan = profile.platform.compute_backend.contains("vulkan");
 
@@ -75,6 +122,14 @@ pub fn configure(engine: String, model: Option<String>, output: Option<String>) 
 
             if device_mb > 0 {
                 println!("iGPU memory ratio: {:.0}%", tensor_ratio * 100.0);
+                if partition.architecture == mem_mgr::ModelArchitecture::MoE {
+                    println!("Strategy: MoE-optimized (experts on CPU, attention on GPU)");
+                } else {
+                    println!("Strategy: Hybrid (attention layers on GPU)");
+                }
+                if partition.kv_cache_mb > 0 {
+                    println!("KV cache estimate: {:.1} MB", partition.kv_cache_mb as f64);
+                }
             }
         }
         "ollama" => {
@@ -202,7 +257,81 @@ pub fn list_profiles() -> Result<()> {
     Ok(())
 }
 
-pub fn serve(port: u16) -> Result<()> {
-    println!("Starting API server on port {}...", port);
+pub async fn serve(port: u16) {
+    use axum::serve;
+    use std::net::SocketAddr;
+    
+    println!("Starting OpenUMA API server on port {}...", port);
+    println!("Endpoints:");
+    println!("  GET  /health              - Health check");
+    println!("  GET  /api/v1/probe       - Detect hardware");
+    println!("  POST /api/v1/configure    - Generate config");
+    println!("  POST /api/v1/benchmark   - Run benchmark");
+    println!("  GET  /api/v1/profiles    - List hardware profiles");
+    
+    let router = api_server::create_router();
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    
+    let listener = tokio::net::TcpListener::bind(addr).await.expect("Failed to bind port");
+    serve(listener, router).await.expect("Server error");
+}
+
+pub fn interactive() -> Result<()> {
+    println!("\n╔══════════════════════════════════════════════════════════════════╗");
+    println!("║            OpenUMA Configuration Wizard                       ║");
+    println!("╚══════════════════════════════════════════════════════════════════╝\n");
+
+    println!("Step 1: Detecting hardware...");
+    let profile = probe_all()?;
+    
+    println!("  ✓ Detected: {}", profile.cpu.model);
+    if let Some(ref igpu) = profile.igpu {
+        println!("  ✓ iGPU: {}", igpu.name);
+    }
+    println!("  ✓ RAM: {:.1} GB", profile.ram.total_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
+    
+    let _total_mb = profile.ram.total_bytes / (1024 * 1024);
+    let _device_mb = profile.igpu.as_ref().and_then(|igpu| igpu.memory_mb).unwrap_or(0);
+
+    println!("\nStep 2: Select inference engine");
+    println!("  [1] llama.cpp  - Best for standard models");
+    println!("  [2] Ollama     - Docker-based inference");
+    println!("  [3] KTransformers - For MoE models (Mixtral, DeepSeek)");
+    
+    let engine = loop {
+        print!("\nEnter choice (1-3) [default: 1]: ");
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        let mut input = String::new();
+        if std::io::stdin().read_line(&mut input).is_ok() {
+            match input.trim() {
+                "" | "1" => break "llamacpp".to_string(),
+                "2" => break "ollama".to_string(),
+                "3" => break "ktransformers".to_string(),
+                _ => println!("Invalid choice, please try again."),
+            }
+        }
+    };
+
+    println!("\nStep 3: Model path (optional)");
+    print!("  Enter path to GGUF model [leave empty to skip]: ");
+    std::io::Write::flush(&mut std::io::stdout()).ok();
+    let mut model_input = String::new();
+    std::io::stdin().read_line(&mut model_input).ok();
+    let model = if model_input.trim().is_empty() {
+        None
+    } else {
+        Some(model_input.trim().to_string())
+    };
+
+    println!("\n╔══════════════════════════════════════════════════════════════════╗");
+    println!("║                     Generated Configuration                     ║");
+    println!("╚══════════════════════════════════════════════════════════════════╝\n");
+
+    configure(engine, model, None)?;
+    
+    println!("\n✓ Configuration complete!");
+    println!("  Run 'openuma serve' for REST API access");
+    println!("  Run 'openuma benchmark --model <path>' to test performance\n");
+
     Ok(())
 }

@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+name = "api_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "openuma-api"
 path = "main.rs"
@@ -18,3 +22,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 hw_probe = { path = "../hw_probe" }
 benchmark = { path = "../benchmark" }
+mem_mgr = { path = "../mem_mgr" }
+config_gen = { path = "../config_gen" }
+profile_db = { path = "../profile_db" }
+dirs.workspace = true

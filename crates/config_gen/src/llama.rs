@@ -28,18 +28,7 @@ impl LlamaCppConfig {
             "0,0".to_string()
         };
 
-        let n_gpu_layers = if device_memory_mb > 0 {
-            let usable = (device_memory_mb as f64 * 0.7) as u64;
-            let layers = match model_size_mb {
-                m if m < 1000 => 32,
-                m if m < 4000 => 35,
-                m if m < 8000 => 40,
-                _ => 48,
-            };
-            std::cmp::min(layers, ((usable / 200) as u32).max(14))
-        } else {
-            0
-        };
+        let n_gpu_layers = Self::calculate_gpu_layers(device_memory_mb, model_size_mb);
 
         let threads = cpu_cores.max(4);
         let n_threads_batch = threads * 2;
@@ -63,6 +52,55 @@ impl LlamaCppConfig {
             mmap: false,
             flash_attn: true,
         }
+    }
+
+    fn calculate_gpu_layers(device_memory_mb: u64, model_size_mb: u64) -> u32 {
+        if device_memory_mb == 0 {
+            return 0;
+        }
+        let usable = (device_memory_mb as f64 * 0.7) as u64;
+        let layers = match model_size_mb {
+            m if m < 1000 => 32,
+            m if m < 4000 => 35,
+            m if m < 8000 => 40,
+            _ => 48,
+        };
+        std::cmp::min(layers, ((usable / 200) as u32).max(14))
+    }
+
+    pub fn for_moe(
+        total_memory_mb: u64,
+        device_memory_mb: u64,
+        model_size_mb: u64,
+        cpu_cores: u32,
+        has_vulkan: bool,
+        expert_layers_cpu: u32,
+    ) -> Self {
+        let mut config = Self::generate(
+            total_memory_mb,
+            device_memory_mb,
+            model_size_mb,
+            cpu_cores,
+            has_vulkan,
+        );
+
+        let total_layers = match model_size_mb {
+            m if m < 1000 => 32,
+            m if m < 4000 => 35,
+            m if m < 8000 => 40,
+            _ => 48,
+        };
+
+        if expert_layers_cpu > 0 {
+            config.n_gpu_layers = total_layers - expert_layers_cpu;
+            config.tensor_split = format!(
+                "{:.2},{:.2}",
+                1.0 - (expert_layers_cpu as f64 / total_layers as f64),
+                expert_layers_cpu as f64 / total_layers as f64
+            );
+        }
+
+        config
     }
 
     pub fn to_flags(&self) -> Vec<String> {

@@ -1,6 +1,7 @@
 use axum::{extract::Json, response::Json as ResponseJson};
 use benchmark::{BenchmarkConfig, BenchmarkRunner, LlamaCliRunner};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthResponse {
@@ -11,7 +12,7 @@ pub struct HealthResponse {
 pub async fn health() -> ResponseJson<HealthResponse> {
     ResponseJson(HealthResponse {
         status: "ok".to_string(),
-        version: "0.1.0".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
     })
 }
 
@@ -83,8 +84,118 @@ pub async fn run_benchmark(Json(req): Json<BenchmarkRequest>) -> ResponseJson<Be
     }
 }
 
-pub async fn list_profiles() -> ResponseJson<serde_json::Value> {
-    ResponseJson(serde_json::json!({
-        "profiles": []
-    }))
+#[derive(Debug, Deserialize)]
+pub struct ConfigureRequest {
+    pub model_path: Option<String>,
+    pub engine: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConfigureResponse {
+    pub success: bool,
+    pub flags: Vec<String>,
+    pub uma_pool: Option<UmaPool>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UmaPool {
+    pub igpu_mb: u64,
+    pub cpu_mb: u64,
+}
+
+pub async fn configure(Json(_req): Json<ConfigureRequest>) -> ResponseJson<ConfigureResponse> {
+    let profile = match hw_probe::probe_all() {
+        Ok(p) => p,
+        Err(e) => return ResponseJson(ConfigureResponse {
+            success: false,
+            flags: vec![],
+            uma_pool: None,
+            error: Some(e.to_string()),
+        }),
+    };
+
+    let total_mb = profile.ram.total_bytes / (1024 * 1024);
+    let device_mb = profile.igpu.as_ref().and_then(|igpu| igpu.memory_mb).unwrap_or(0);
+    
+    let partition = mem_mgr::compute_partition(total_mb, device_mb, None);
+    let has_vulkan = profile.platform.compute_backend.contains("vulkan");
+    let cpu_cores = profile.cpu.threads;
+    
+    let model_size_mb = 4000;
+    let llama_config = config_gen::LlamaCppConfig::generate(
+        total_mb,
+        device_mb,
+        model_size_mb,
+        cpu_cores,
+        has_vulkan,
+    );
+
+    ResponseJson(ConfigureResponse {
+        success: true,
+        flags: llama_config.to_flags(),
+        uma_pool: Some(UmaPool {
+            igpu_mb: partition.device_memory_mb,
+            cpu_mb: partition.host_memory_mb,
+        }),
+        error: None,
+    })
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfileInfo {
+    pub name: String,
+    pub cpu_model: String,
+    pub igpu: Option<String>,
+    pub ram_mb: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListProfilesResponse {
+    pub success: bool,
+    pub profiles: Vec<ProfileInfo>,
+    pub error: Option<String>,
+}
+
+pub async fn list_profiles() -> ResponseJson<ListProfilesResponse> {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("openuma");
+    
+    std::fs::create_dir_all(&config_dir).ok();
+    
+    let db_path = config_dir.join("profiles.db");
+    
+    match profile_db::ProfileDatabase::new(&db_path) {
+        Ok(db) => {
+            if let Ok(profiles) = db.get_all_profiles() {
+                if profiles.is_empty() {
+                    let _ = db.seed_defaults();
+                }
+            }
+            
+            match db.get_all_profiles() {
+                Ok(profiles) => ResponseJson(ListProfilesResponse {
+                    success: true,
+                    profiles: profiles.into_iter().map(|p| ProfileInfo {
+                        name: p.name,
+                        cpu_model: p.cpu_model,
+                        igpu: p.igpu,
+                        ram_mb: p.ram_mb,
+                    }).collect(),
+                    error: None,
+                }),
+                Err(e) => ResponseJson(ListProfilesResponse {
+                    success: false,
+                    profiles: vec![],
+                    error: Some(e.to_string()),
+                }),
+            }
+        }
+        Err(e) => ResponseJson(ListProfilesResponse {
+            success: false,
+            profiles: vec![],
+            error: Some(e.to_string()),
+        }),
+    }
 }
