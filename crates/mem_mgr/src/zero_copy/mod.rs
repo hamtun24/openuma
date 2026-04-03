@@ -1,3 +1,13 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DmaBufCapabilities {
+    pub available: bool,
+    pub unified_memory: bool,
+    pub zero_copy_threshold_mb: u64,
+}
+
+#[cfg(target_os = "linux")]
 pub mod linux;
 
 #[cfg(target_os = "windows")]
@@ -5,13 +15,6 @@ pub mod windows;
 
 #[cfg(target_os = "macos")]
 pub mod macos;
-
-#[derive(Debug, Clone, Default)]
-pub struct DmaBufCapabilities {
-    pub available: bool,
-    pub unified_memory: bool,
-    pub zero_copy_threshold_mb: u64,
-}
 
 pub fn detect_capabilities() -> DmaBufCapabilities {
     #[cfg(target_os = "linux")]

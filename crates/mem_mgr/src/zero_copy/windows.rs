@@ -1,12 +1,5 @@
-#[derive(Debug, Clone, Default)]
-pub struct DmaBufCapabilities {
-    pub available: bool,
-    pub unified_memory: bool,
-    pub zero_copy_threshold_mb: u64,
-}
-
-pub fn detect_capabilities() -> DmaBufCapabilities {
-    DmaBufCapabilities {
+pub fn detect_capabilities() -> crate::zero_copy::DmaBufCapabilities {
+    crate::zero_copy::DmaBufCapabilities {
         available: true,
         unified_memory: true,
         zero_copy_threshold_mb: 256,
