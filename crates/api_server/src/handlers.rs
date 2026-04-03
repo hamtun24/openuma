@@ -107,21 +107,27 @@ pub struct UmaPool {
 pub async fn configure(Json(_req): Json<ConfigureRequest>) -> ResponseJson<ConfigureResponse> {
     let profile = match hw_probe::probe_all() {
         Ok(p) => p,
-        Err(e) => return ResponseJson(ConfigureResponse {
-            success: false,
-            flags: vec![],
-            uma_pool: None,
-            error: Some(e.to_string()),
-        }),
+        Err(e) => {
+            return ResponseJson(ConfigureResponse {
+                success: false,
+                flags: vec![],
+                uma_pool: None,
+                error: Some(e.to_string()),
+            })
+        }
     };
 
     let total_mb = profile.ram.total_bytes / (1024 * 1024);
-    let device_mb = profile.igpu.as_ref().and_then(|igpu| igpu.memory_mb).unwrap_or(0);
-    
+    let device_mb = profile
+        .igpu
+        .as_ref()
+        .and_then(|igpu| igpu.memory_mb)
+        .unwrap_or(0);
+
     let partition = mem_mgr::compute_partition(total_mb, device_mb, None);
     let has_vulkan = profile.platform.compute_backend.contains("vulkan");
     let cpu_cores = profile.cpu.threads;
-    
+
     let model_size_mb = 4000;
     let llama_config = config_gen::LlamaCppConfig::generate(
         total_mb,
@@ -161,11 +167,11 @@ pub async fn list_profiles() -> ResponseJson<ListProfilesResponse> {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("openuma");
-    
+
     std::fs::create_dir_all(&config_dir).ok();
-    
+
     let db_path = config_dir.join("profiles.db");
-    
+
     match profile_db::ProfileDatabase::new(&db_path) {
         Ok(db) => {
             if let Ok(profiles) = db.get_all_profiles() {
@@ -173,16 +179,19 @@ pub async fn list_profiles() -> ResponseJson<ListProfilesResponse> {
                     let _ = db.seed_defaults();
                 }
             }
-            
+
             match db.get_all_profiles() {
                 Ok(profiles) => ResponseJson(ListProfilesResponse {
                     success: true,
-                    profiles: profiles.into_iter().map(|p| ProfileInfo {
-                        name: p.name,
-                        cpu_model: p.cpu_model,
-                        igpu: p.igpu,
-                        ram_mb: p.ram_mb,
-                    }).collect(),
+                    profiles: profiles
+                        .into_iter()
+                        .map(|p| ProfileInfo {
+                            name: p.name,
+                            cpu_model: p.cpu_model,
+                            igpu: p.igpu,
+                            ram_mb: p.ram_mb,
+                        })
+                        .collect(),
                     error: None,
                 }),
                 Err(e) => ResponseJson(ListProfilesResponse {

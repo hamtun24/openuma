@@ -25,7 +25,9 @@ pub fn probe_cpu() -> Result<CpuProfile, HwProbeError> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
-        Err(HwProbeError::Unsupported("Unsupported platform".to_string()))
+        Err(HwProbeError::Unsupported(
+            "Unsupported platform".to_string(),
+        ))
     }
 }
 
@@ -44,7 +46,9 @@ pub fn probe_ram() -> Result<RamProfile, HwProbeError> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
-        Err(HwProbeError::Unsupported("Unsupported platform".to_string()))
+        Err(HwProbeError::Unsupported(
+            "Unsupported platform".to_string(),
+        ))
     }
 }
 
@@ -63,7 +67,9 @@ pub fn probe_igpu() -> Result<Option<IgpuProfile>, HwProbeError> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
-        Err(HwProbeError::Unsupported("Unsupported platform".to_string()))
+        Err(HwProbeError::Unsupported(
+            "Unsupported platform".to_string(),
+        ))
     }
 }
 
@@ -82,6 +88,8 @@ pub fn probe_platform() -> Result<PlatformProfile, HwProbeError> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
-        Err(HwProbeError::Unsupported("Unsupported platform".to_string()))
+        Err(HwProbeError::Unsupported(
+            "Unsupported platform".to_string(),
+        ))
     }
 }

@@ -260,7 +260,7 @@ pub fn list_profiles() -> Result<()> {
 pub async fn serve(port: u16) {
     use axum::serve;
     use std::net::SocketAddr;
-    
+
     println!("Starting OpenUMA API server on port {}...", port);
     println!("Endpoints:");
     println!("  GET  /health              - Health check");
@@ -268,11 +268,13 @@ pub async fn serve(port: u16) {
     println!("  POST /api/v1/configure    - Generate config");
     println!("  POST /api/v1/benchmark   - Run benchmark");
     println!("  GET  /api/v1/profiles    - List hardware profiles");
-    
+
     let router = api_server::create_router();
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    
-    let listener = tokio::net::TcpListener::bind(addr).await.expect("Failed to bind port");
+
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind port");
     serve(listener, router).await.expect("Server error");
 }
 
@@ -283,21 +285,28 @@ pub fn interactive() -> Result<()> {
 
     println!("Step 1: Detecting hardware...");
     let profile = probe_all()?;
-    
+
     println!("  ✓ Detected: {}", profile.cpu.model);
     if let Some(ref igpu) = profile.igpu {
         println!("  ✓ iGPU: {}", igpu.name);
     }
-    println!("  ✓ RAM: {:.1} GB", profile.ram.total_bytes as f64 / (1024.0 * 1024.0 * 1024.0));
-    
+    println!(
+        "  ✓ RAM: {:.1} GB",
+        profile.ram.total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
+    );
+
     let _total_mb = profile.ram.total_bytes / (1024 * 1024);
-    let _device_mb = profile.igpu.as_ref().and_then(|igpu| igpu.memory_mb).unwrap_or(0);
+    let _device_mb = profile
+        .igpu
+        .as_ref()
+        .and_then(|igpu| igpu.memory_mb)
+        .unwrap_or(0);
 
     println!("\nStep 2: Select inference engine");
     println!("  [1] llama.cpp  - Best for standard models");
     println!("  [2] Ollama     - Docker-based inference");
     println!("  [3] KTransformers - For MoE models (Mixtral, DeepSeek)");
-    
+
     let engine = loop {
         print!("\nEnter choice (1-3) [default: 1]: ");
         std::io::Write::flush(&mut std::io::stdout()).ok();
@@ -328,7 +337,7 @@ pub fn interactive() -> Result<()> {
     println!("╚══════════════════════════════════════════════════════════════════╝\n");
 
     configure(engine, model, None)?;
-    
+
     println!("\n✓ Configuration complete!");
     println!("  Run 'openuma serve' for REST API access");
     println!("  Run 'openuma benchmark --model <path>' to test performance\n");
