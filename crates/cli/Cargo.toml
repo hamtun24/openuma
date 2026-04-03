@@ -1,0 +1,22 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "openuma"
+path = "main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+hw_probe = { path = "../hw_probe" }
+mem_mgr = { path = "../mem_mgr" }
+config_gen = { path = "../config_gen" }
+profile_db = { path = "../profile_db" }
+benchmark = { path = "../benchmark" }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dirs.workspace = true

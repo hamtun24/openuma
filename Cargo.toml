@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/hw_probe",
+    "crates/mem_mgr",
+    "crates/config_gen",
+    "crates/profile_db",
+    "crates/benchmark",
+    "crates/api_server",
+    "crates/cli",
+    "crates/tui",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+once_cell = "1.19"
+dirs = "5.0"
+rusqlite = { version = "0.31", features = ["bundled"] }
+toml = "0.8"
+minijinja = "2.0"
+clap = { version = "4.6", features = ["derive"] }
+axum = "0.7"
+ratatui = "0.28"
+crossterm = "0.28"
+indicatif = "0.17"
+regex = "1.10"
+sysinfo = "0.32"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = 3
