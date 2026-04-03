@@ -16,7 +16,15 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
         rust: [stable]
 
     steps:
@@ -29,6 +37,10 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: clippy, rustfmt
 
+      - name: Add cross-compilation target (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: rustup target add ${{ matrix.target }}
+
       - name: Cache Cargo registry
         uses: actions/cache@v4
         with:
@@ -36,11 +48,12 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -51,24 +64,36 @@ jobs:
             pciutils \
             dmidecode
 
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install molten-vk
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run Clippy (zero warnings)
+      - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Build (debug)
-        run: cargo build --all
+        run: cargo build --all --target ${{ matrix.target }}
 
       - name: Build (release)
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Run tests
-        run: cargo test --all
+        run: cargo test --all --target ${{ matrix.target }}
 
       - name: Upload release binary
         uses: actions/upload-artifact@v4
         with:
-          name: openuma-linux-x86_64
-          path: target/release/openuma
+          name: openuma-${{ matrix.os }}-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/openuma
+          retention-days: 30
+
+      - name: Upload release binary (Windows .exe)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openuma-${{ matrix.os }}-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/openuma.exe
           retention-days: 30

@@ -13,4 +13,7 @@ pub enum HwProbeError {
 
     #[error("Not found: {0}")]
     NotFound(String),
+
+    #[error("Unsupported: {0}")]
+    Unsupported(String),
 }

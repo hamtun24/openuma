@@ -5,7 +5,7 @@
 [![Build](https://github.com/hamtun24/openuma/actions/workflows/build.yml/badge.svg)](https://github.com/hamtun24/openuma/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![Platform](https://img.shields.io/badge/platform-Linux-yellowgreen.svg)](https://github.com/hamtun24/openuma)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-yellowgreen.svg)](https://github.com/hamtun24/openuma)
 [![Version](https://img.shields.io/badge/version-v0.6.0-blue.svg)](https://github.com/hamtun24/openuma/releases)
 
 ```
@@ -186,15 +186,35 @@ openuma/
 
 ## Installation
 
-### Option A — Download Binary (Linux x86_64)
+### Option A — Download Binary
 
+**Linux:**
 ```bash
-# Download latest release
 curl -L https://github.com/hamtun24/openuma/releases/latest/download/openuma-linux-x86_64.tar.gz \
   | tar xz
-
-# Run it
 ./openuma probe
+```
+
+**macOS (Intel):**
+```bash
+curl -L https://github.com/hamtun24/openuma/releases/latest/download/openuma-macos-x86_64.tar.gz \
+  | tar xz
+./openuma probe
+```
+
+**macOS (Apple Silicon):**
+```bash
+curl -L https://github.com/hamtun24/openuma/releases/latest/download/openuma-macos-arm64.tar.gz \
+  | tar xz
+./openuma probe
+```
+
+**Windows:**
+```powershell
+# Download from releases page or use PowerShell
+Invoke-WebRequest -Uri https://github.com/hamtun24/openuma/releases/latest/download/openuma-windows-x86_64.zip -OutFile openuma.zip
+Expand-Archive openuma.zip
+.\openuma.exe probe
 ```
 
 ### Option B — Build from Source
@@ -207,15 +227,27 @@ cargo build --release
 ./target/release/openuma probe
 ```
 
+### Cross-Platform Compilation
+
+```bash
+# Add targets
+rustup target add x86_64-pc-windows-msvc
+rustup target add aarch64-apple-darwin
+rustup target add x86_64-apple-darwin
+
+# Build for specific platform
+cargo build --release --target x86_64-pc-windows-msvc
+```
+
 ### System Requirements
 
-| Requirement | Notes |
-|---|---|
-| OS | Linux (kernel 5.10+) |
-| CPU | Any x86_64 with AMD APU or Intel iGPU |
-| RAM | 16GB minimum, 32GB recommended |
-| Optional | llama.cpp in PATH for real benchmarks |
-| Optional | Vulkan drivers for iGPU acceleration |
+| Requirement | Linux | macOS | Windows |
+|---|---|---|---|
+| OS | Linux (kernel 5.10+) | macOS 12+ | Windows 10+ |
+| CPU | x86_64/ARM64 | ARM64 (Apple Silicon) or x86_64 | x86_64 |
+| RAM | 16GB minimum | 16GB minimum | 16GB minimum |
+| GPU | AMD APU / Intel iGPU | Apple Silicon GPU | Intel iGPU / AMD APU |
+| Optional | Vulkan drivers | Metal (built-in) | DirectX 12 |
 
 ### Install Vulkan Drivers (if missing)
 

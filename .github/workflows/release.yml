@@ -10,8 +10,24 @@ permissions:
 
 jobs:
   build-release:
-    name: Build Release Binary
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: openuma-linux-x86_64.tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: openuma-windows-x86_64.zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: openuma-macos-arm64.tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: openuma-macos-x86_64.tar.gz
 
     steps:
       - name: Checkout repository
@@ -20,14 +36,8 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libvulkan-dev \
-            libdrm-dev \
-            pciutils \
-            dmidecode
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -36,23 +46,76 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libvulkan-dev \
+            libdrm-dev \
+            pciutils \
+            dmidecode
+
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install molten-vk
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Compress binary
+      - name: Package binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          cd target/release
-          tar czf openuma-linux-x86_64.tar.gz openuma
-          sha256sum openuma-linux-x86_64.tar.gz > openuma-linux-x86_64.tar.gz.sha256
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.artifact_name }} openuma
+          sha256sum ${{ matrix.artifact_name }} > ${{ matrix.artifact_name }}.sha256
 
+      - name: Package binary (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.artifact_name }} openuma
+          shasum -a 256 ${{ matrix.artifact_name }} > ${{ matrix.artifact_name }}.sha256
+
+      - name: Package binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd target/${{ matrix.target }}/release
+          Compress-Archive -Path openuma.exe -DestinationPath ${{ matrix.artifact_name }}
+          Get-FileHash ${{ matrix.artifact_name }} -Algorithm SHA256 | Select-Object -ExpandProperty Hash > ${{ matrix.artifact_name }}.sha256
+
+      - name: Upload release artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.inputs.upload_url }}
+          asset_path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.artifact_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload SHA256
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.inputs.upload_url }}
+          asset_path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}.sha256
+          asset_name: ${{ matrix.artifact_name }}.sha256
+          asset_content_type: text/plain
+
+  create-release:
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            target/release/openuma-linux-x86_64.tar.gz
-            target/release/openuma-linux-x86_64.tar.gz.sha256
           generate_release_notes: true
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
