@@ -36,10 +36,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy, rustfmt
-
-      - name: Add cross-compilation target (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: rustup target add ${{ matrix.target }}
+          targets: ${{ matrix.target }}
 
       - name: Cache Cargo registry
         uses: actions/cache@v4
