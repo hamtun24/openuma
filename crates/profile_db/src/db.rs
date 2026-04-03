@@ -69,7 +69,7 @@ impl ProfileDatabase {
         Ok(profiles)
     }
 
-    pub fn find_profile(&self, cpu_model: &str, ram_mb: u64) -> Result<Option<HardwareProfile>> {
+    pub fn find_profile(&self, cpu_model: &str, _ram_mb: u64) -> Result<Option<HardwareProfile>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, cpu_model, igpu, ram_mb, os, created_at FROM profiles WHERE cpu_model LIKE ?1 LIMIT 1"
         )?;

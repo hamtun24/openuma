@@ -3,7 +3,7 @@ use crate::types::RamProfile;
 use std::fs;
 
 pub fn probe_ram() -> Result<RamProfile, HwProbeError> {
-    let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| HwProbeError::Io(e))?;
+    let meminfo = fs::read_to_string("/proc/meminfo").map_err(HwProbeError::Io)?;
 
     let mut total = 0u64;
     let mut available = 0u64;
@@ -33,7 +33,7 @@ pub fn probe_ram() -> Result<RamProfile, HwProbeError> {
 fn parse_meminfo_line(line: &str) -> u64 {
     line.split(':')
         .nth(1)
-        .and_then(|s| s.trim().split_whitespace().next())
+        .and_then(|s| s.split_whitespace().next())
         .and_then(|s| s.parse().ok())
         .unwrap_or(0)
 }

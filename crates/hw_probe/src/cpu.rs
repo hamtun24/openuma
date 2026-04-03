@@ -12,7 +12,7 @@ pub fn probe_cpu() -> Result<CpuProfile, HwProbeError> {
         flags: Vec::new(),
     };
 
-    let cpuinfo = std::fs::read_to_string("/proc/cpuinfo").map_err(|e| HwProbeError::Io(e))?;
+    let cpuinfo = std::fs::read_to_string("/proc/cpuinfo").map_err(HwProbeError::Io)?;
 
     for line in cpuinfo.lines() {
         if line.starts_with("model name") {
@@ -31,7 +31,7 @@ pub fn probe_cpu() -> Result<CpuProfile, HwProbeError> {
             cpu.flags = line
                 .split(':')
                 .nth(1)
-                .map(|s| s.trim().split_whitespace().map(String::from).collect())
+                .map(|s| s.split_whitespace().map(String::from).collect())
                 .unwrap_or_default();
         }
     }

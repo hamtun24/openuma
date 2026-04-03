@@ -18,7 +18,7 @@ pub fn compute_partition(total_memory_mb: u64, device_memory_mb: u64) -> UMAPart
 
     UMAPartition {
         host_memory_mb: host_memory,
-        device_memory_mb: device_memory_mb,
+        device_memory_mb,
         shared_memory_mb: shared,
     }
 }

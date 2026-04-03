@@ -1,7 +1,6 @@
 use api_server::create_router;
 use axum::serve;
 use std::net::SocketAddr;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {
