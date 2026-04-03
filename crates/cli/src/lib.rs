@@ -15,6 +15,8 @@ pub struct Cli {
 pub enum Commands {
     Probe,
     Configure {
+        #[arg(short, long, default_value = "llamacpp")]
+        engine: String,
         #[arg(short, long)]
         model: Option<String>,
         #[arg(short, long)]
@@ -40,7 +42,11 @@ pub fn run() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Probe => commands::probe(),
-        Commands::Configure { model, output } => commands::configure(model, output),
+        Commands::Configure {
+            engine,
+            model,
+            output,
+        } => commands::configure(engine, model, output),
         Commands::Benchmark {
             model,
             tokens,

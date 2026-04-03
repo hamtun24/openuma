@@ -90,7 +90,7 @@ cargo build --release
 | `openuma configure --engine <engine> --model <path>` | Generate engine config |
 | `openuma benchmark --model <path>` | Run inference benchmark |
 | `openuma zerocopy --test` | Test DMA-BUF zero-copy |
-| `openuma serve` | Start REST API server |
+| `openuma serve` | Start REST API server *(coming v0.7)* |
 | `openuma profile list` | List known hardware profiles |
 
 ## Supported Inference Engines
