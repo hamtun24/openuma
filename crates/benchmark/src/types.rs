@@ -53,7 +53,6 @@ impl BenchmarkResult {
                 result.prompt_eval_time_ms = line
                     .split(':')
                     .nth(1)?
-                    .trim()
                     .split_whitespace()
                     .next()?
                     .parse()
@@ -62,7 +61,6 @@ impl BenchmarkResult {
                 result.eval_time_ms = line
                     .split(':')
                     .nth(1)?
-                    .trim()
                     .split_whitespace()
                     .next()?
                     .parse()
@@ -71,9 +69,8 @@ impl BenchmarkResult {
                 result.tokens_per_second = line
                     .split(':')
                     .nth(1)
-                    .or_else(|| Some(line))
+                    .or(Some(line))
                     .unwrap_or("0")
-                    .trim()
                     .split_whitespace()
                     .next()?
                     .parse()

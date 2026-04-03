@@ -1,0 +1,18 @@
+# Build output
+/target/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary benchmark output
+/tmp/
+*.bench.json
+
+# Do NOT ignore Cargo.lock for binary projects

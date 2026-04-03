@@ -1,0 +1,24 @@
+title: "[RESULTS] Hardware and benchmark results"
+labels:
+  - hardware-results
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share your hardware profile and benchmark results here.
+        Run `openuma probe` and `openuma benchmark --model your-model.gguf --full`
+        and paste the output.
+
+  - type: textarea
+    id: probe
+    attributes:
+      label: "openuma probe output"
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: "Benchmark results"
+    validations:
+      required: false

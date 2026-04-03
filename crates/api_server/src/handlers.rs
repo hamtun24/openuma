@@ -1,6 +1,6 @@
 use axum::{extract::Json, response::Json as ResponseJson};
+use benchmark::{BenchmarkConfig, BenchmarkRunner, LlamaCliRunner};
 use serde::{Deserialize, Serialize};
-use benchmark::{BenchmarkRunner, LlamaCliRunner, BenchmarkConfig};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthResponse {
@@ -16,31 +16,29 @@ pub async fn health() -> ResponseJson<HealthResponse> {
 }
 
 pub async fn probe() -> ResponseJson<serde_json::Value> {
-    let profile = hw_probe::probe_all().unwrap_or_else(|_e| {
-        hw_probe::HardwareProfile {
-            cpu: hw_probe::CpuProfile {
-                model: "Unknown".to_string(),
-                vendor: "Unknown".to_string(),
-                cores: 0,
-                threads: 0,
-                frequency_mhz: 0,
-                flags: vec![],
-            },
-            igpu: None,
-            ram: hw_probe::RamProfile {
-                total_bytes: 0,
-                available_bytes: 0,
-                swap_total_bytes: 0,
-                swap_free_bytes: 0,
-            },
-            dgpu: None,
-            platform: hw_probe::PlatformProfile {
-                os: "Unknown".to_string(),
-                os_version: "Unknown".to_string(),
-                kernel: "Unknown".to_string(),
-                compute_backend: "Unknown".to_string(),
-            },
-        }
+    let profile = hw_probe::probe_all().unwrap_or_else(|_e| hw_probe::HardwareProfile {
+        cpu: hw_probe::CpuProfile {
+            model: "Unknown".to_string(),
+            vendor: "Unknown".to_string(),
+            cores: 0,
+            threads: 0,
+            frequency_mhz: 0,
+            flags: vec![],
+        },
+        igpu: None,
+        ram: hw_probe::RamProfile {
+            total_bytes: 0,
+            available_bytes: 0,
+            swap_total_bytes: 0,
+            swap_free_bytes: 0,
+        },
+        dgpu: None,
+        platform: hw_probe::PlatformProfile {
+            os: "Unknown".to_string(),
+            os_version: "Unknown".to_string(),
+            kernel: "Unknown".to_string(),
+            compute_backend: "Unknown".to_string(),
+        },
     });
 
     ResponseJson(serde_json::to_value(profile).unwrap())

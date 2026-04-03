@@ -41,7 +41,11 @@ pub fn run() -> anyhow::Result<()> {
     match cli.command {
         Commands::Probe => commands::probe(),
         Commands::Configure { model, output } => commands::configure(model, output),
-        Commands::Benchmark { model, tokens, threads } => commands::benchmark(model, tokens, threads),
+        Commands::Benchmark {
+            model,
+            tokens,
+            threads,
+        } => commands::benchmark(model, tokens, threads),
         Commands::Profiles => commands::list_profiles(),
         Commands::Serve { port } => commands::serve(port),
     }

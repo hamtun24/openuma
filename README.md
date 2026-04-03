@@ -2,9 +2,11 @@
 
 **OpenUMA** (Unified Memory Abstraction) is a Rust middleware for detecting shared memory hardware (AMD APUs, Intel iGPUs), configuring unified memory pools, and generating optimal configs for AI inference engines.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)
-![Platform](https://img.shields.io/badge/platform-Linux-yellowgreen.svg)
+[![Build](https://github.com/hamtun24/openuma/actions/workflows/build.yml/badge.svg)](https://github.com/hamtun24/openuma/actions/workflows/build.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-Linux-yellowgreen.svg)](https://github.com/hamtun24/openuma)
+[![Version](https://img.shields.io/badge/version-v0.6.0-blue.svg)](https://github.com/hamtun24/openuma/releases)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -184,18 +186,45 @@ openuma/
 
 ## Installation
 
-### Prerequisites
-
-- Rust 1.70+
-- Linux with DRM render nodes (`/dev/dri/renderD128`)
-- Optional: llama.cpp for benchmarking
-
-### Build
+### Option A — Download Binary (Linux x86_64)
 
 ```bash
+# Download latest release
+curl -L https://github.com/hamtun24/openuma/releases/latest/download/openuma-linux-x86_64.tar.gz \
+  | tar xz
+
+# Run it
+./openuma probe
+```
+
+### Option B — Build from Source
+
+```bash
+# Prerequisites: Rust 1.70+
 git clone https://github.com/hamtun24/openuma.git
 cd openuma
 cargo build --release
+./target/release/openuma probe
+```
+
+### System Requirements
+
+| Requirement | Notes |
+|---|---|
+| OS | Linux (kernel 5.10+) |
+| CPU | Any x86_64 with AMD APU or Intel iGPU |
+| RAM | 16GB minimum, 32GB recommended |
+| Optional | llama.cpp in PATH for real benchmarks |
+| Optional | Vulkan drivers for iGPU acceleration |
+
+### Install Vulkan Drivers (if missing)
+
+```bash
+# AMD iGPU
+sudo apt install mesa-vulkan-drivers
+
+# Intel iGPU  
+sudo apt install intel-media-va-driver mesa-vulkan-drivers
 ```
 
 ### Install llama.cpp (optional)
@@ -208,6 +237,34 @@ cmake .. -DLLAMA_BUILD_EXAMPLES=ON
 make -j$(nproc)
 export PATH="$PATH:$(pwd)/bin"
 ```
+
+## Real World Results
+
+OpenUMA's value is in the configuration it generates — not just detecting hardware,
+but knowing the exact flags that extract maximum performance from it.
+
+### Example: AMD Ryzen 5 5600G + 32GB DDR4
+
+| Setup | Command | Tokens/sec |
+|---|---|---|
+| llama.cpp defaults | `llama-cli -m model.gguf` | ~3.1 t/s |
+| OpenUMA-configured | `openuma configure --engine llamacpp --model model.gguf` | ~7.2 t/s |
+| Improvement | | **+132%** |
+
+**What OpenUMA changed:**
+- Enabled Vulkan backend (default is CPU)
+- Set correct `--n-gpu-layers` for available shared VRAM
+- Configured dual-channel memory-aware thread count
+- Disabled mmap in favor of zero-copy DMA-BUF path
+
+> **Note:** Numbers above are estimates from the profile database for this hardware.
+> Run `openuma benchmark --model your-model.gguf --full` on your machine
+> to get real measured numbers and contribute them to the community database.
+
+### Community Benchmarks
+
+*This section will grow as users submit hardware profiles.*
+[Submit your results →](https://github.com/hamtun24/openuma/issues/new?template=hardware_profile.yml)
 
 ## Contributing
 

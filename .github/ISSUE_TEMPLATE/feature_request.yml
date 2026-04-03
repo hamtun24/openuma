@@ -1,0 +1,37 @@
+name: "Feature Request"
+description: "Suggest a new feature or improvement"
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What problem does this solve?"
+      description: "Describe the use case or pain point"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed solution"
+      description: "What would you like OpenUMA to do?"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: "Category"
+      options:
+        - "Hardware support (new CPU/iGPU)"
+        - "Inference engine support (new engine)"
+        - "Memory management"
+        - "CLI / TUI"
+        - "API server"
+        - "Windows support"
+        - "Performance improvement"
+        - "Documentation"
+        - "Other"
+    validations:
+      required: true

@@ -1,0 +1,71 @@
+name: "Submit Hardware Profile"
+description: "Share your hardware results to help build the OpenUMA profile database"
+title: "[PROFILE] <CPU Model> + <iGPU> - <RAM>GB"
+labels: ["hardware-profile", "community"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thank you for contributing a hardware profile!
+        Run `openuma probe` and paste the output below.
+        This data helps OpenUMA generate better configs for everyone with similar hardware.
+
+  - type: textarea
+    id: probe_output
+    attributes:
+      label: "openuma probe output"
+      description: "Paste the full output of `openuma probe` here"
+      placeholder: |
+        ╔══════════════════════════════════════════╗
+        ║        OpenUMA Hardware Profile           ║
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmark_output
+    attributes:
+      label: "Benchmark results (optional)"
+      description: "If you ran `openuma benchmark --model <your-model.gguf>`, paste output here"
+      placeholder: "Paste benchmark output here, or leave blank"
+    validations:
+      required: false
+
+  - type: input
+    id: os_version
+    attributes:
+      label: "OS and kernel version"
+      placeholder: "e.g. Ubuntu 24.04, kernel 6.8.0"
+    validations:
+      required: true
+
+  - type: input
+    id: ram_config
+    attributes:
+      label: "RAM configuration"
+      placeholder: "e.g. 2x16GB DDR4-3200 (dual-channel)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: igpu_vram_bios
+    attributes:
+      label: "iGPU VRAM allocation in BIOS"
+      options:
+        - "512MB (default)"
+        - "1GB"
+        - "2GB"
+        - "4GB"
+        - "8GB"
+        - "16GB"
+        - "Don't know / not changed"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "Additional notes"
+      description: "Anything unusual about your setup, dual-GPU, custom BIOS settings, etc."
+    validations:
+      required: false

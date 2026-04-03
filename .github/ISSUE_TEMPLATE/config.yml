@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Submit a Hardware Profile"
+    url: https://github.com/hamtun24/openuma/issues/new?template=hardware_profile.yml
+    about: "Share your benchmark results to help build the profile database"
+  - name: "Discussions"
+    url: https://github.com/hamtun24/openuma/discussions
+    about: "Ask questions and share results"
