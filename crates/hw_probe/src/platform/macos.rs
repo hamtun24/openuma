@@ -39,7 +39,7 @@ pub fn probe_cpu() -> Result<CpuProfile, HwProbeError> {
         .output()
     {
         if let Ok(s) = String::from_utf8(output.stdout) {
-            cpu.frequency_mhz = s.trim().parse::<u64>().unwrap_or(0) / 1_000_000;
+            cpu.frequency_mhz = (s.trim().parse::<u64>().unwrap_or(0) / 1_000_000) as u32;
         }
     }
 
